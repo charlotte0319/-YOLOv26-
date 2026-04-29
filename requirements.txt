@@ -1,0 +1,13 @@
+﻿ultralytics>=8.4.0
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+polars>=1.0
+opencv-python>=4.8
+flask>=3.0
+pyyaml>=6.0
+tqdm>=4.66
+h5py>=3.10
+torch>=2.1
+waitress>=3.0
+python-dotenv>=1.0

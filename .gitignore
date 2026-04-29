@@ -1,0 +1,30 @@
+﻿# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual env
+.venv/
+venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# Build / logs
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Runtime outputs
+runs_yolo26n/
+runs_yolo26x/
+legacy_physics_stockout/predict_images/
+legacy_physics_stockout/csv_*/
+zip/
+
+# OS
+.DS_Store
+Thumbs.db
