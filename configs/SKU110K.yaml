@@ -1,0 +1,64 @@
+path: ../data/stock_out
+train: images/train
+val: images/val
+test: images/test
+nc: 2
+names:
+  0: "商品"
+  1: "空缺"
+download: |
+  from pathlib import Path
+  import polars as pl
+
+  dataset_root = Path(yaml["path"])
+
+  # 只在 labels/train 不存在时生成标签，避免重复转换。
+  # 这里仅将 SKU110K 风格 CSV 标注转换为商品类（class 0）YOLO 标签；
+  # 空缺类（class 1）标签需由当前数据集自行提供。
+  if not (dataset_root / "labels" / "train").exists():
+      print("检测到 labels 目录缺失，开始根据 annotations 生成商品类标签...")
+
+      for split in ["train", "val", "test"]:
+          (dataset_root / "labels" / split).mkdir(parents=True, exist_ok=True)
+
+      columns = ["image", "x1", "y1", "x2", "y2", "class", "image_width", "image_height"]
+      split_map = {
+          "annotations_train.csv": "train",
+          "annotations_val.csv": "val",
+          "annotations_test.csv": "test",
+      }
+
+      for csv_file, split in split_map.items():
+          csv_path = dataset_root / "annotations" / csv_file
+          if not csv_path.exists():
+              print(f"{csv_file} 不存在，跳过")
+              continue
+
+          df = (
+              pl.read_csv(csv_path, has_header=False, new_columns=columns)
+              .with_columns(pl.col("image").str.strip_chars())
+          )
+
+          print(f"处理 {split}: {len(df)} 条标注，{df['image'].n_unique()} 张图片")
+
+          for img_name, group in df.group_by("image"):
+              stem = Path(img_name).stem
+              label_path = dataset_root / "labels" / split / f"{stem}.txt"
+
+              with open(label_path, "w", encoding="utf-8") as file:
+                  image_width = group["image_width"][0]
+                  image_height = group["image_height"][0]
+                  for row in group.iter_rows(named=True):
+                      x1 = row["x1"] / image_width
+                      y1 = row["y1"] / image_height
+                      x2 = row["x2"] / image_width
+                      y2 = row["y2"] / image_height
+                      center_x = (x1 + x2) / 2
+                      center_y = (y1 + y2) / 2
+                      box_width = x2 - x1
+                      box_height = y2 - y1
+                      file.write(f"0 {center_x:.6f} {center_y:.6f} {box_width:.6f} {box_height:.6f}\n")
+
+      print("标签生成完成，现在可以开始训练。")
+  else:
+      print("labels 目录已存在，跳过转换。")
