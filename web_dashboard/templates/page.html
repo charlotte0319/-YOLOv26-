@@ -1,0 +1,443 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }} - 货架空缺管理系统</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+</head>
+<body data-page="{{ page_key }}">
+  <div class="layout-shell">
+    <aside class="layout-sidebar">
+      <a href="/" class="brand" aria-label="返回总览页">
+        <span class="brand-mark">Y26</span>
+        <span class="brand-copy">
+          <strong>货架空缺管理系统</strong>
+          <small>本地检测后台</small>
+        </span>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="主导航">
+        {% for key, label in nav_items.items() %}
+        <a href="{{ '/' if key == 'dashboard' else '/' + key }}" class="sidebar-link {% if key == page_key %}active{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+
+      <section class="sidebar-card">
+        <h3>页面说明</h3>
+        <p id="sidebar-page-desc">正在加载页面说明...</p>
+      </section>
+
+      <section class="sidebar-card">
+        <h3>快捷操作</h3>
+        <div class="sidebar-actions">
+          <button class="ghost-btn" id="action-refresh" type="button">刷新数据</button>
+          <button class="ghost-btn" id="action-health" type="button">健康检查</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="layout-main">
+      <header class="main-header">
+        <div>
+          <p class="header-kicker">管理控制台</p>
+          <h1>{{ page_title }}</h1>
+          <p class="header-subtitle" id="header-subtitle">正在加载运行状态...</p>
+        </div>
+        <div class="header-badges">
+          <span class="header-badge" id="badge-version">版本：加载中</span>
+          <span class="header-badge success" id="badge-refresh">最近刷新：--</span>
+        </div>
+      </header>
+
+      {% if page_key == 'dashboard' %}
+      <section id="page-dashboard" class="page-view active">
+        <div class="overview-grid" id="overview-grid"></div>
+
+        <div class="split-layout split-dashboard">
+          <section class="panel dashboard-status-panel" id="dashboard-status-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">批次监控</p>
+                <h2>检测状态</h2>
+              </div>
+              <div class="panel-tools">
+                <input id="dashboard-search" type="text" placeholder="搜索图片名" />
+                <select id="dashboard-filter">
+                  <option value="all">全部风险</option>
+                  <option value="high">高风险</option>
+                  <option value="mid">中风险</option>
+                  <option value="ok">低风险</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-caption" id="dashboard-counter">显示 0 / 0 条</div>
+            <div class="table-wrap medium">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>图片</th>
+                    <th>空缺率</th>
+                    <th>行数</th>
+                    <th>空缺数</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-records-body">
+                  <tr><td colspan="5" class="empty-row">正在加载...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel dashboard-detail-panel" id="dashboard-detail-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">图片查看器</p>
+                <h2>图片详情</h2>
+              </div>
+              <button class="primary-btn" id="dashboard-open-modal" type="button">弹窗查看</button>
+            </div>
+
+            <div class="preview-card">
+              <section class="detail-hero">
+                <div class="detail-hero-copy">
+                  <p class="detail-kicker">当前记录</p>
+                  <h3 id="dashboard-detail-title">-</h3>
+                  <p class="detail-subtitle" id="dashboard-detail-subtitle">请选择左侧记录查看当前检测状态。</p>
+                </div>
+                <div class="detail-hero-tags">
+                  <span class="detail-chip" id="dashboard-detail-risk-chip">风险：-</span>
+                  <span class="detail-chip neutral" id="dashboard-detail-time-chip">时间：-</span>
+                </div>
+              </section>
+
+              <button class="preview-image-wrap" id="dashboard-preview-trigger" type="button">
+                <div class="preview-placeholder" id="dashboard-preview-placeholder">请选择左侧记录</div>
+                <img id="dashboard-preview-image" alt="检测结果预览图" />
+              </button>
+
+              <div class="stats-grid">
+                <div class="stat-box"><span>商品数</span><strong id="dashboard-stat-product">-</strong></div>
+                <div class="stat-box"><span>空缺数</span><strong id="dashboard-stat-empty">-</strong></div>
+                <div class="stat-box"><span>空缺率</span><strong id="dashboard-stat-ratio">-</strong></div>
+                <div class="stat-box"><span>检测行数</span><strong id="dashboard-stat-rows">-</strong></div>
+              </div>
+
+              <div class="meta-grid">
+                <div class="meta-item"><span>文件名</span><strong id="dashboard-file-label">-</strong></div>
+                <div class="meta-item"><span>风险等级</span><strong id="dashboard-risk-label">-</strong></div>
+                <div class="meta-item"><span>检测时间</span><strong id="dashboard-time-label">-</strong></div>
+              </div>
+
+              <div class="row-block">
+                <div class="row-block-head">
+                  <h3>行级空缺分布</h3>
+                  <span id="dashboard-row-summary">-</span>
+                </div>
+                <div id="dashboard-row-breakdown" class="row-breakdown"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+      {% elif page_key == 'records' %}
+      <section id="page-records" class="page-view active">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">记录中心</p>
+              <h2>检测记录中心</h2>
+            </div>
+            <div class="panel-tools">
+              <input id="records-search" type="text" placeholder="搜索图片名" />
+              <select id="records-filter">
+                <option value="all">全部风险</option>
+                <option value="high">高风险</option>
+                <option value="mid">中风险</option>
+                <option value="ok">低风险</option>
+              </select>
+              <select id="records-sort">
+                <option value="default">按文件名</option>
+                <option value="empty_ratio">按空缺率</option>
+                <option value="empty_count">按空缺数</option>
+                <option value="product_count">按商品数</option>
+                <option value="actual_rows">按行数</option>
+                <option value="total">按目标总数</option>
+              </select>
+              <button class="primary-btn" id="records-sort-dir" type="button">降序</button>
+            </div>
+          </div>
+          <div class="config-strip">
+            <div class="config-item">
+              <label for="risk-mid-threshold">低/中分界 (%)</label>
+              <input id="risk-mid-threshold" type="number" min="0" max="99" step="0.1" />
+            </div>
+            <div class="config-item">
+              <label for="risk-high-threshold">中/高分界 (%)</label>
+              <input id="risk-high-threshold" type="number" min="0.1" max="100" step="0.1" />
+            </div>
+            <div class="config-item compact">
+              <label for="records-per-page">每页条数</label>
+              <select id="records-per-page">
+                <option value="20">20</option>
+                <option value="40" selected>40</option>
+                <option value="80">80</option>
+                <option value="120">120</option>
+              </select>
+            </div>
+            <button class="primary-btn threshold-btn" id="risk-threshold-apply" type="button">应用阈值</button>
+            <div class="config-note" id="risk-threshold-note">当前风险阈值加载中...</div>
+          </div>
+          <div class="records-summary-strip" id="records-summary-strip"></div>
+          <div class="table-caption" id="records-counter">显示 0 / 0 条</div>
+          <div class="table-wrap tall">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>图片</th>
+                  <th>商品数</th>
+                  <th>空缺数</th>
+                  <th>空缺率</th>
+                  <th>行数</th>
+                  <th>各行空缺</th>
+                  <th>时间</th>
+                </tr>
+              </thead>
+              <tbody id="records-body">
+                <tr><td colspan="8" class="empty-row">正在加载...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination-bar" id="records-pagination">
+            <button class="ghost-btn" id="records-prev-page" type="button">上一页</button>
+            <span id="records-page-info">第 1 / 1 页</span>
+            <button class="ghost-btn" id="records-next-page" type="button">下一页</button>
+          </div>
+        </section>
+      </section>
+      {% elif page_key == 'training' %}
+      <section id="page-training" class="page-view active">
+        <section class="panel model-center">
+          <div class="model-center-main">
+            <div>
+              <p class="panel-kicker">模型中心</p>
+              <h2 id="training-hero-title">模型中心</h2>
+              <p class="model-center-desc" id="training-hero-desc">正在加载模型运行信息...</p>
+            </div>
+            <div class="model-center-chips" id="training-hero-chips"></div>
+          </div>
+        </section>
+
+        <div class="overview-grid" id="training-metrics-grid"></div>
+        <div class="overview-grid compact-grid" id="training-status-grid"></div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">模型概览</p>
+              <h2>模型运行概览</h2>
+            </div>
+          </div>
+          <div class="text-list" id="training-report-highlights"></div>
+        </section>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">核心图表</p>
+                <h2>核心训练结果</h2>
+              </div>
+            </div>
+            <div class="asset-grid" id="training-core-assets"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">指标图表</p>
+                <h2>混淆矩阵与指标曲线</h2>
+              </div>
+            </div>
+            <div class="asset-grid compact" id="training-confusion-assets"></div>
+          </section>
+        </div>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">验证样本</p>
+                <h2>验证样本图</h2>
+              </div>
+            </div>
+            <div class="asset-grid compact" id="training-val-assets"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">训练样本</p>
+                <h2>训练样本图</h2>
+              </div>
+            </div>
+            <div class="asset-grid compact" id="training-train-assets"></div>
+          </section>
+        </div>
+      </section>
+      {% elif page_key == 'cases' %}
+      <section id="page-cases" class="page-view active">
+        <div class="overview-grid" id="cases-metrics-grid"></div>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">重点案例</p>
+                <h2>高空缺案例</h2>
+              </div>
+            </div>
+            <div class="case-grid" id="cases-high-empty"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">密集货架</p>
+                <h2>密集货架案例</h2>
+              </div>
+            </div>
+            <div class="case-grid" id="cases-dense"></div>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">多层货架</p>
+              <h2>多层货架案例</h2>
+            </div>
+          </div>
+          <div class="case-grid" id="cases-rows"></div>
+        </section>
+      </section>
+      {% elif page_key == 'system' %}
+      <section id="page-system" class="page-view active">
+        <div class="overview-grid" id="system-cards-grid"></div>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">路径清单</p>
+                <h2>关键路径</h2>
+              </div>
+            </div>
+            <div class="info-list" id="system-path-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">运行状态</p>
+                <h2>运行状态</h2>
+              </div>
+            </div>
+            <div class="info-list" id="system-runtime-list"></div>
+          </section>
+        </div>
+
+        <div class="split-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">运行快照</p>
+                <h2>运行快照</h2>
+              </div>
+            </div>
+            <pre class="code-box" id="system-snapshot-box">加载中...</pre>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">运维建议</p>
+                <h2>使用建议</h2>
+              </div>
+            </div>
+            <div class="checklist">
+              <div class="check-item">确认 `.env` 中的模型分支、版本号和端口设置与当前目录一致。</div>
+              <div class="check-item">执行 `predict.py` 后再打开管理系统，确保 CSV 和预测图已同步更新。</div>
+              <div class="check-item">如需切换模型版本，请先确认 `runs_yolo26n` / `runs_yolo26x` 的输出目录命名一致。</div>
+              <div class="check-item">建议定期核对 `results.png`、混淆矩阵和预测样例，避免版本结果混淆。</div>
+            </div>
+          </section>
+        </div>
+      </section>
+      {% endif %}
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="image-modal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-label="图片预览弹窗">
+      <button class="modal-close" id="modal-close" type="button">关闭</button>
+      <div class="modal-main">
+        <div class="modal-image-area">
+          <button class="modal-nav prev" id="modal-prev" type="button" aria-label="上一张">‹</button>
+          <div class="modal-image-stage">
+            <div class="modal-image-wrap">
+              <img id="modal-image" alt="图片预览" draggable="false" />
+            </div>
+            <div class="modal-zoom-bar">
+              <button class="ghost-btn compact" id="modal-zoom-out" type="button">缩小</button>
+              <strong id="modal-zoom-value">100%</strong>
+              <button class="ghost-btn compact" id="modal-zoom-in" type="button">放大</button>
+              <button class="ghost-btn compact" id="modal-zoom-reset" type="button">重置</button>
+            </div>
+            <div class="modal-image-bar">
+              <div>
+                <span>当前文件</span>
+                <strong id="modal-image-file">-</strong>
+              </div>
+              <div>
+                <span>浏览位置</span>
+                <strong id="modal-image-order">1 / 1</strong>
+              </div>
+            </div>
+            <div class="modal-image-hint">
+              <span>键盘 ← / → 切换图片，Esc 关闭，+ / - 缩放，放大后可拖拽查看</span>
+            </div>
+          </div>
+          <button class="modal-nav next" id="modal-next" type="button" aria-label="下一张">›</button>
+        </div>
+        <aside class="modal-side">
+          <div class="modal-hero">
+            <p class="panel-kicker">图片详情</p>
+            <h2 id="modal-title">图片预览</h2>
+            <div class="modal-hero-chips" id="modal-hero-chips"></div>
+            <p class="modal-hero-desc" id="modal-hero-desc">-</p>
+          </div>
+          <div class="modal-side-block">
+            <div class="modal-block-head">
+              <h3>基础信息</h3>
+            </div>
+            <div class="modal-meta" id="modal-meta"></div>
+          </div>
+          <div class="modal-side-block accent">
+            <div class="modal-block-head">
+              <h3>统计数据</h3>
+            </div>
+            <div id="modal-side-stats" class="modal-stats-grid"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
